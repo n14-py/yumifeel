@@ -1,0 +1,441 @@
+/* ============================================= */
+/* ---      Estilos Globales de YumiFeel     --- */
+/* ============================================= */
+:root {
+    --primary-color: #E91E63; /* Tono rosado principal */
+    --primary-color-dark: #c2185b;
+    --background-color: #1e1e1e; /* Fondo oscuro (ligeramente más claro que el tuyo) */
+    --surface-color: #2a2a2a; /* Color de superficie (el gris que pediste) */
+    --text-color: #ffffff;
+    --text-muted-color: #a0a0a0;
+    --border-color: #3a3a3a;
+    --success-color: #4CAF50;
+    --danger-color: #F44336;
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --border-radius: 8px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* --- Diseño de App Nativa --- */
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden; /* Evita el scroll en el body, se maneja por contenedor */
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-size: 16px;
+}
+
+/* Contenedor principal de la app */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    max-width: 800px; /* Ancho máximo para el chat en desktop */
+    margin: 0 auto;
+    background-color: var(--surface-color);
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+/* ============================================= */
+/* ---       Header de la Aplicación         --- */
+/* ============================================= */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.header-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.header-title-logo {
+    font-weight: 700;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 1.5rem;
+}
+
+.header-icon {
+    font-size: 1.5rem;
+    color: var(--text-muted-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+.header-icon:hover {
+    color: var(--primary-color);
+}
+.header-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.header-user-info span {
+    font-size: 0.9rem;
+}
+
+/* ============================================= */
+/* ---     Contenido Principal (Chat/Vistas)   --- */
+/* ============================================= */
+.app-content {
+    flex-grow: 1; /* Ocupa todo el espacio disponible */
+    overflow-y: auto; /* Permite scroll solo en esta área */
+    padding: 1.5rem;
+}
+
+/* Estilos para el Chat */
+.chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-bottom: 1rem; /* Espacio para el input */
+}
+
+.message {
+    display: flex;
+    max-width: 80%;
+    animation: fadeIn 0.3s ease;
+}
+.message.user {
+    align-self: flex-end;
+}
+.message.ai {
+    align-self: flex-start;
+}
+
+.message-content {
+    padding: 12px 18px;
+    border-radius: 18px;
+    line-height: 1.5;
+}
+
+.message.user .message-content {
+    background-color: var(--primary-color);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message.ai .message-content {
+    background-color: #3a3a3a;
+    color: var(--text-color);
+    border-bottom-left-radius: 4px;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: var(--text-muted-color);
+    margin-top: 4px;
+}
+.message.user .message-time { text-align: right; }
+
+/* Input de Chat */
+.chat-input-area {
+    flex-shrink: 0;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+}
+
+.chat-form {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.chat-form input[type="text"] {
+    flex-grow: 1;
+    padding: 14px;
+    border-radius: 22px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-size: 1rem;
+}
+.chat-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.chat-form button {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.chat-form button:hover {
+    background-color: var(--primary-color-dark);
+}
+.chat-form button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================= */
+/* --- Formularios (Login, Register, Vincular) --- */
+/* ============================================= */
+.form-container {
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 2rem;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    border-top: 4px solid var(--primary-color);
+}
+
+/* Contenedor para vistas que NO son la app principal (login/register) */
+.auth-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.auth-header h1 {
+    color: var(--primary-color);
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+.auth-header p {
+    font-size: 1.1rem;
+    color: var(--text-muted-color);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-muted-color);
+}
+.form-control {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+}
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.2);
+}
+
+.btn {
+    display: inline-block;
+    padding: 14px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    text-align: center;
+    text-decoration: none;
+}
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: var(--primary-color-dark);
+}
+.btn-secondary {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+.btn-secondary:hover {
+    background-color: #3a3a3a;
+}
+.btn-block {
+    display: block;
+    width: 100%;
+}
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.form-text {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: var(--text-muted-color);
+}
+.form-text a {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Alertas de Error/Éxito */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid transparent;
+    font-weight: 500;
+}
+.alert-danger {
+    background-color: rgba(244, 67, 54, 0.1);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+.alert-success {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+.alert-info {
+    background-color: rgba(33, 150, 243, 0.1);
+    border-color: #2196F3;
+    color: #64b5f6;
+}
+
+
+/* ============================================= */
+/* ---        Página de Ajustes (Settings)   --- */
+/* ============================================= */
+/* Este contenedor se usa dentro de .app-content 
+  para centrar y limitar el ancho de la página de ajustes
+*/
+.settings-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.settings-header h1 {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-top: 1rem; /* Espacio desde el header */
+}
+
+.settings-section {
+    margin-bottom: 2rem;
+}
+
+.settings-section-title {
+    font-size: 1.1rem; /* Un poco más sutil */
+    font-weight: 600;
+    color: var(--text-muted-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Cada fila de ajuste */
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    /* El fondo ya es --surface-color, no necesitamos más */
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 0.75rem;
+}
+
+.settings-item-label {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.settings-item-action .btn-sm {
+    border: 1px solid var(--border-color);
+}
+
+/* Toggle Switch (para Dark Mode, Notificaciones, etc) */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px; /* Ancho del switch */
+    height: 28px; /* Alto del switch */
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #555; /* Color apagado */
+    transition: .4s;
+    border-radius: 28px; /* Redondeado */
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px; /* Diámetro del círculo */
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .slider:before {
+    /* Movimiento = (Ancho Switch - Diámetro Círculo) - (Padding Izq * 2) */
+    /* (50 - 20) - (4*2) = 30 - 8 = 22px */
+    transform: translateX(22px); 
+}
+
+/* Botón de Cerrar Sesión */
+.btn-logout {
+    background-color: var(--danger-color);
+    color: white;
+    width: 100%; /* Que ocupe todo el ancho */
+}
+.btn-logout:hover {
+    background-color: #c62828; /* Un rojo más oscuro */
+}
