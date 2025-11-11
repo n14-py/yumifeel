@@ -55,7 +55,12 @@ app.use(session({
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // 'auto' no es un valor estándar, usamos booleano
+        // --- CAMBIO IMPORTANTE AQUÍ ---
+        // Desactivamos 'secure' temporalmente para debugging en Render.
+        // Render usa un proxy, y esto a veces causa que la cookie no se guarde
+        // si se fuerza 'secure: true' sin una configuración de proxy correcta.
+        secure: false, // process.env.NODE_ENV === 'production',
+        // --- FIN DEL CAMBIO ---
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24 * 7 // 7 días
     }
@@ -377,7 +382,7 @@ app.post('/link-partner', requireAuth, async (req, res) => {
 });
 
 // --- LÓGICA DE LA IA (DEEPSEEK) ---
-
+// (Esta parte no se toca, como pediste)
 /**
  * Llama a la API de DeepSeek para obtener una respuesta.
  * @param {Array} history - Un array de objetos { role: 'user'/'assistant', content: '...' }
@@ -424,7 +429,7 @@ IMPORTANTE: Estás hablando AHORA MISMO con ${currentUserName}. El nombre de su 
 }
 
 // --- LÓGICA DE CHAT EN TIEMPO REAL (Socket.IO) ---
-
+// (Esta parte tampoco se toca)
 io.on('connection', (socket) => {
     console.log('🔌 Un usuario se ha conectado:', socket.id);
 
@@ -553,5 +558,6 @@ socket.emit('message', aiMediationMessage);            }
 // --- INICIAR EL SERVIDOR ---
 // Usamos server.listen en lugar de app.listen para que Socket.IO funcione
 server.listen(PORT, () => {
-    console.log(`🚀 YumiFeel corriendo en ${process.env.BASE_URL}`);
+    // Asegurarse de que BASE_URL esté definida en Render para que esto se vea bien
+    console.log(`🚀 YumiFeel corriendo en ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
 });
