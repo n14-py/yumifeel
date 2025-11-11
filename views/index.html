@@ -6,6 +6,8 @@
     <title>YumiFeel - Conecta con tu pareja</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2a9d8f">
 </head>
 <body>
 
@@ -92,5 +94,15 @@
     
     <script src="/js/app.js"></script>
 
+    <script>
+        // Registrar el Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('Service Worker Registrado'))
+                .catch(err => console.error('Error al registrar Service Worker:', err));
+        }
+    </script>
+
+
 </body>
-</html> 
+</html>
