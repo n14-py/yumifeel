@@ -1,9 +1,11 @@
 // =============================================
 //               YumiFeel - server.js
-//                 Parte 1 de 2
+//       Versión: Production Completa (v2.0)
 // =============================================
 
-// --- IMPORTACIONES Y CONFIGURACIÓN INICIAL ---
+// ---------------------------------------------
+// 1. IMPORTACIONES Y CONFIGURACIÓN DEL SISTEMA
+// ---------------------------------------------
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
@@ -13,105 +15,108 @@ const bcrypt = require('bcrypt');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const MongoStore = require('connect-mongo');
-const axios = require('axios'); // Para la IA de DeepSeek
-const crypto = require('crypto'); // Para generar códigos de invitación
+const axios = require('axios'); // Cliente HTTP para DeepSeek
+const crypto = require('crypto'); // Para generar códigos seguros
 
-// Importaciones para Socket.IO
+// Configuración de Socket.IO (Tiempo Real)
 const http = require('http');
 const { Server } = require("socket.io");
 
 const app = express();
-const server = http.createServer(app); // Creamos un servidor HTTP para Socket.IO
-const io = new Server(server); // Socket.IO se adjunta al servidor HTTP
+const server = http.createServer(app); // Servidor HTTP base
+const io = new Server(server); // Servidor de Websockets montado
 
 const PORT = process.env.PORT || 3000;
 
-// --- CONFIGURACIÓN DE VISTAS (EJS) ---
-// Usamos EJS como motor de plantillas, igual que tentacionpy
+// ---------------------------------------------
+// 2. CONFIGURACIÓN DEL MOTOR DE VISTAS
+// ---------------------------------------------
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'html');
 app.engine('html', require('ejs').renderFile);
 
-// --- MIDDLEWARES DE EXPRESS ---
-app.use(express.json()); // Para parsear JSON
-app.use(express.urlencoded({ extended: true })); // Para parsear formularios
-app.use(express.static(path.join(__dirname, 'public'))); // Carpeta para CSS, JS, imágenes
+// ---------------------------------------------
+// 3. MIDDLEWARES PRINCIPALES
+// ---------------------------------------------
+app.use(express.json()); // Permite recibir JSON
+app.use(express.urlencoded({ extended: true })); // Permite recibir datos de formularios
+app.use(express.static(path.join(__dirname, 'public'))); // Archivos estáticos (CSS, JS, Img)
 
-// --- CONEXIÓN A MONGODB ---
+// ---------------------------------------------
+// 4. CONEXIÓN A BASE DE DATOS (MONGODB)
+// ---------------------------------------------
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB (YumiFeel)'))
-  .catch(err => console.error('❌ Error de conexión a MongoDB:', err));
+  .catch(err => console.error('❌ Error crítico de conexión a MongoDB:', err));
 
-// --- CONFIGURACIÓN DE SESIÓN ---
-// Usamos MongoStore para guardar las sesiones en la base de datos
+// ---------------------------------------------
+// 5. CONFIGURACIÓN DE SESIÓN Y COOKIES
+// ---------------------------------------------
 const sessionStore = MongoStore.create({
   mongoUrl: process.env.MONGODB_URI,
-  collectionName: 'sessions'
+  collectionName: 'sessions',
+  ttl: 14 * 24 * 60 * 60 // 14 días de vida para la sesión en BD
 });
 
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'secreto_super_seguro_yumifeel',
     resave: false,
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-        // --- CAMBIO IMPORTANTE AQUÍ ---
-        // Desactivamos 'secure' temporalmente para debugging en Render.
-        // Render usa un proxy, y esto a veces causa que la cookie no se guarde
-        // si se fuerza 'secure: true' sin una configuración de proxy correcta.
-        secure: false, // process.env.NODE_ENV === 'production',
-        // --- FIN DEL CAMBIO ---
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24 * 7 // 7 días
+        secure: false, // IMPORTANTE: Dejar en false si no usas HTTPS localmente o Proxy
+        httpOnly: true, // Protege contra ataques XSS
+        maxAge: 1000 * 60 * 60 * 24 * 7 // Cookie válida por 7 días
     }
 }));
 
-// --- CONFIGURACIÓN DE PASSPORT (AUTENTICACIÓN) ---
+// Inicialización de Passport (Auth)
 app.use(passport.initialize());
 app.use(passport.session());
 
-// --- MODELOS DE BASE DE DATOS (SCHEMAS) ---
+// ---------------------------------------------
+// 6. MODELOS DE DATOS (SCHEMAS)
+// ---------------------------------------------
 
-// Esquema para la Pareja
+// --- MODELO: PAREJA ---
 const coupleSchema = new mongoose.Schema({
     userIds: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    // Aquí puedes guardar el estado emocional general, resúmenes de IA, etc.
     emotionalState: {
         type: String,
         default: 'Neutral'
     },
-    emotionalSummary: String, // Resumen semanal de la IA
+    emotionalSummary: String, // Resumen generado por la IA
 }, { timestamps: true });
 
 const Couple = mongoose.model('Couple', coupleSchema);
 
-// Esquema para el Usuario
+// --- MODELO: USUARIO ---
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     name: { type: String, required: true },
     
-    coupleId: { // El ID de la "pareja" a la que pertenece
+    coupleId: { // Relación con la Pareja
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Couple',
         default: null
     },
-    partnerId: { // El ID del otro usuario vinculado
+    partnerId: { // Relación directa con el compañero
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         default: null
     },
-    invitationCode: { // Código único para vincularse
+    invitationCode: { // Código único para invitar
         type: String,
         unique: true,
         sparse: true
     }
 }, { timestamps: true });
 
-// Middleware para generar un código de invitación único antes de guardar
+// Generar código de invitación automáticamente antes de guardar
 userSchema.pre('save', function(next) {
     if (this.isNew && !this.invitationCode) {
         this.invitationCode = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -121,35 +126,37 @@ userSchema.pre('save', function(next) {
 
 const User = mongoose.model('User', userSchema);
 
-// Esquema para los Mensajes (del chat con la IA)
+// --- MODELO: MENSAJE ---
 const messageSchema = new mongoose.Schema({
-    senderId: { // El ID del usuario que envía el mensaje
+    senderId: { // Quién envió el mensaje (o para quién es, si es de la IA)
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    coupleId: { // El ID de la pareja, para agrupar mensajes
+    coupleId: { 
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Couple',
         required: true
     },
     text: { type: String, required: true },
-    isFromAI: { type: Boolean, default: false } // Para diferenciar mensajes de IA y de usuario
+    isFromAI: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const Message = mongoose.model('Message', messageSchema);
 
-// --- CONFIGURACIÓN DE ESTRATEGIA LOCAL DE PASSPORT ---
+// ---------------------------------------------
+// 7. ESTRATEGIA DE AUTENTICACIÓN (PASSPORT)
+// ---------------------------------------------
 passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
     try {
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            return done(null, false, { message: 'Email no registrado.' });
+            return done(null, false, { message: 'Este correo no está registrado.' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return done(null, false, { message: 'Contraseña incorrecta.' });
+            return done(null, false, { message: 'La contraseña es incorrecta.' });
         }
         
         return done(null, user);
@@ -158,7 +165,7 @@ passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, passwor
     }
 }));
 
-// Serializar y Deserializar usuario (para la sesión)
+// Serialización de usuarios para la sesión
 passport.serializeUser((user, done) => {
     done(null, user.id);
 });
@@ -172,66 +179,65 @@ passport.deserializeUser(async (id, done) => {
     }
 });
 
-// --- MIDDLEWARES GLOBALES ---
+// ---------------------------------------------
+// 8. MIDDLEWARES GLOBALES Y DE RUTAS
+// ---------------------------------------------
 
-// Middleware para pasar datos a todas las vistas (EJS)
+// Variables globales para las vistas (EJS)
 app.use((req, res, next) => {
-    res.locals.currentUser = req.user; // Pasa el usuario logueado a las vistas
-    res.locals.baseUrl = process.env.BASE_URL; // Pasa la URL base
+    res.locals.currentUser = req.user;
+    res.locals.baseUrl = process.env.BASE_URL;
     res.locals.path = req.path;
-    res.locals.error = req.session.error; // Mensajes de error
-    res.locals.success = req.session.success; // Mensajes de éxito
+    // Mensajes flash (éxito/error)
+    res.locals.error = req.session.error;
+    res.locals.success = req.session.success;
     delete req.session.error;
     delete req.session.success;
     next();
 });
 
-// Middleware para proteger rutas
+// Protector de rutas (Requiere Login)
 const requireAuth = (req, res, next) => {
     if (req.isAuthenticated()) {
-        return next(); // Si está logueado, continúa
+        return next();
     }
-    res.redirect('/login'); // Si no, al login
+    res.redirect('/login');
 };
 
-// --- RUTAS DE AUTENTICACIÓN (Login, Register, Logout) ---
+// ---------------------------------------------
+// 9. RUTAS DE AUTENTICACIÓN (LOGIN/REGISTER)
+// ---------------------------------------------
 
-// GET /login - Muestra el formulario de login
+// Login
 app.get('/login', (req, res) => {
-    if (req.isAuthenticated()) {
-        return res.redirect('/'); // Si ya está logueado, va al chat
-    }
-    res.render('login.html'); // Renderiza views/login.html
+    if (req.isAuthenticated()) return res.redirect('/');
+    res.render('login.html');
 });
 
-// POST /login - Procesa el formulario de login
 app.post('/login', passport.authenticate('local', {
-    successRedirect: '/',         // A dónde ir si el login es exitoso
-    failureRedirect: '/login',  // A dónde ir si falla
-    failureFlash: false // Cambia a true si configuras connect-flash
+    successRedirect: '/',
+    failureRedirect: '/login',
+    failureFlash: false 
 }));
 
-// GET /register - Muestra el formulario de registro
+// Registro
 app.get('/register', (req, res) => {
-    if (req.isAuthenticated()) {
-        return res.redirect('/');
-    }
-    res.render('register.html'); // Renderiza views/register.html
+    if (req.isAuthenticated()) return res.redirect('/');
+    res.render('register.html');
 });
 
-// POST /register - Procesa el formulario de registro
 app.post('/register', async (req, res, next) => {
     try {
         const { name, email, password } = req.body;
         
         if (!name || !email || !password) {
-            req.session.error = "Todos los campos son obligatorios.";
+            req.session.error = "Por favor, completa todos los campos.";
             return res.redirect('/register');
         }
 
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
-            req.session.error = "Ese email ya está en uso.";
+            req.session.error = "Este correo electrónico ya está registrado.";
             return res.redirect('/register');
         }
 
@@ -244,91 +250,91 @@ app.post('/register', async (req, res, next) => {
 
         await newUser.save();
 
-        // Loguear al usuario automáticamente después de registrarse
+        // Auto-login tras registro exitoso
         req.login(newUser, (err) => {
-            if (err) { return next(err); }
-            req.session.success = "¡Cuenta creada con éxito! Bienvenido a YumiFeel.";
+            if (err) return next(err);
+            req.session.success = "¡Bienvenido a YumiFeel!";
             return res.redirect('/');
         });
 
     } catch (err) {
-        req.session.error = "Error al crear la cuenta.";
+        console.error("Error en registro:", err);
+        req.session.error = "Ocurrió un error al crear tu cuenta.";
         res.redirect('/register');
     }
 });
 
-// GET /logout - Cierra la sesión
+// Logout
 app.get('/logout', (req, res, next) => {
     req.logout((err) => {
-        if (err) { return next(err); }
+        if (err) return next(err);
         req.session.destroy(() => {
             res.redirect('/login');
         });
     });
 });
 
+// ---------------------------------------------
+// 10. RUTAS PRINCIPALES DE LA APP
+// ---------------------------------------------
 
-
-
-// =============================================
-//               YumiFeel - server.js
-//                 Parte 2 de 2
-// =============================================
-
-// --- RUTAS DE LA APLICACIÓN PRINCIPAL ---
-
-// GET / - Ruta principal (El Chat)
+// HOME / CHAT
 app.get('/', requireAuth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         
-        // 1. Si el usuario no está vinculado, mostrar la vista de "Vincular"
+        // A) USUARIO SIN PAREJA -> VISTA VINCULAR
         if (!user.coupleId || !user.partnerId) {
             return res.render('index.html', { 
-                view: 'link-partner', // Le decimos a EJS que renderice la vista de vincular
+                view: 'link-partner', 
                 invitationCode: user.invitationCode,
                 partner: null,
                 messages: []
             });
         }
 
-        // 2. Si está vinculado, buscar los datos de la pareja y el historial de chat
+        // B) USUARIO CON PAREJA -> VISTA CHAT PRIVADO
         const partner = await User.findById(user.partnerId).select('name email');
         
-        // Buscamos todos los mensajes que pertenezcan a esta pareja
-        // y que sean del usuario actual O de la IA (para que no vea los de su pareja)
+        // --- FILTRO DE PRIVACIDAD ---
+        // Buscamos SOLO los mensajes asociados al usuario actual (senderId = yo).
+        // Esto traerá:
+        // 1. Lo que yo escribí.
+        // 2. Lo que la IA me respondió a mí.
+        // NO traerá lo que escribió mi pareja.
         const messages = await Message.find({
             coupleId: user.coupleId,
-            $or: [
-                { senderId: user._id },
-                { isFromAI: true }
-            ]
+            senderId: user._id 
         }).sort({ createdAt: 'asc' });
 
-        // 3. Renderizar la vista de chat
         res.render('index.html', {
-            view: 'chat', // Le decimos a EJS que renderice el chat
+            view: 'chat',
             partner: partner,
             messages: messages,
-            invitationCode: user.invitationCode // Sigue siendo útil para la vista de "settings"
+            invitationCode: user.invitationCode 
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("Error cargando home:", err);
         req.session.error = "Error al cargar la aplicación.";
         res.redirect('/login');
     }
 });
 
-// GET /settings - Página de Ajustes
-app.get('/settings', requireAuth, (req, res) => {
-    // Pasamos el código de invitación del usuario a la página de ajustes
+// SETTINGS / AJUSTES
+app.get('/settings', requireAuth, async (req, res) => {
+    let partner = null;
+    if (req.user.partnerId) {
+        partner = await User.findById(req.user.partnerId).select('name');
+    }
+    
     res.render('settings.html', {
-        invitationCode: req.user.invitationCode
+        invitationCode: req.user.invitationCode,
+        partner: partner
     });
 });
 
-// POST /link-partner - Procesa la vinculación con un código
+// VINCULAR PAREJA (POST)
 app.post('/link-partner', requireAuth, async (req, res) => {
     const { partnerCode } = req.body;
     const currentUser = await User.findById(req.user.id);
@@ -340,73 +346,77 @@ app.post('/link-partner', requireAuth, async (req, res) => {
         }
         
         if (partnerCode.toUpperCase() === currentUser.invitationCode) {
-            req.session.error = "No puedes vincularte contigo mismo.";
+            req.session.error = "No puedes vincularte con tu propio código.";
             return res.redirect('/');
         }
 
         const partner = await User.findOne({ invitationCode: partnerCode.toUpperCase() });
 
         if (!partner) {
-            req.session.error = "Código de pareja no encontrado.";
+            req.session.error = "El código no existe. Verifícalo.";
             return res.redirect('/');
         }
 
         if (currentUser.coupleId || partner.coupleId) {
-            req.session.error = "Tú o tu pareja ya están vinculados a otra persona.";
+            req.session.error = "Uno de los usuarios ya tiene pareja.";
             return res.redirect('/');
         }
 
-        // Crear la nueva entidad de Pareja
+        // Crear nueva pareja
         const newCouple = new Couple({
             userIds: [currentUser._id, partner._id]
         });
         await newCouple.save();
 
-        // Actualizar a ambos usuarios
+        // Actualizar usuario actual
         currentUser.coupleId = newCouple._id;
         currentUser.partnerId = partner._id;
         await currentUser.save();
 
+        // Actualizar pareja
         partner.coupleId = newCouple._id;
         partner.partnerId = currentUser._id;
         await partner.save();
 
-        req.session.success = `¡Vinculación exitosa con ${partner.name}!`;
+        req.session.success = `¡Conectado exitosamente con ${partner.name}!`;
         res.redirect('/');
 
     } catch (err) {
         console.error("Error al vincular:", err);
-        req.session.error = "Error interno al intentar vincular.";
+        req.session.error = "Error interno al vincular.";
         res.redirect('/');
     }
 });
 
-// --- LÓGICA DE LA IA (DEEPSEEK) ---
-// (Esta parte no se toca, como pediste)
-/**
- * Llama a la API de DeepSeek para obtener una respuesta.
- * @param {Array} history - Un array de objetos { role: 'user'/'assistant', content: '...' }
- * @returns {String} - El texto de la respuesta de la IA.
- */
-// ...
-// ...
-async function callDeepSeek(history, currentUserName, partnerName) { // <-- AÑADIR NOMBRES
+// ---------------------------------------------
+// 11. MOTOR DE IA (DEEPSEEK / OPENAI)
+// ---------------------------------------------
+async function callDeepSeek(history, currentUserName, partnerName) {
     try {
-        // El prompt del sistema define la personalidad de la IA
+        // --- PROMPT DE MEDIACIÓN PRIVADA ---
+        // Este prompt es clave: Instruye a la IA a leer TODO pero responder SOLO al usuario.
         const systemPrompt = {
             role: "system",
-            // INYECTAMOS LOS NOMBRES AQUÍ
-            content: `Eres Yumi, una mediadora emocional. Tu tono es empático y humano.
-IMPORTANTE: Estás hablando AHORA MISMO con ${currentUserName}. El nombre de su pareja es ${partnerName}. No confundas sus nombres ni sus géneros. Ayuda a ${currentUserName} a entender la situación con ${partnerName}.`
+            content: `Eres Yumi, una IA mediadora de parejas experta en inteligencia emocional.
+            
+            DINÁMICA DE LA CONVERSACIÓN:
+            1. Estás en un chat privado con ${currentUserName}.
+            2. Tienes acceso al contexto de lo que ha dicho su pareja (${partnerName}), pero ${currentUserName} NO puede leer esos mensajes.
+            3. Tu trabajo es ser un puente. Explica cómo se siente ${partnerName} basándote en sus mensajes, pero tradúcelo a un lenguaje constructivo y empático.
+            
+            REGLAS:
+            - Nunca copies y pegues textualmente lo que dijo ${partnerName} si es hiriente.
+            - Ayuda a ${currentUserName} a validar sus propios sentimientos.
+            - Sé breve, cálida y usa emojis ocasionalmente.
+            - Tu objetivo es reducir el conflicto y aumentar la conexión.`
         };
 
         const response = await axios.post(
-// ...
             'https://api.deepseek.com/chat/completions',
             {
-                model: 'deepseek-chat', // O el modelo que prefieras
+                model: 'deepseek-chat', 
                 messages: [systemPrompt, ...history],
-                temperature: 0.7, // Un valor balanceado para creatividad y coherencia
+                temperature: 0.7, 
             },
             {
                 headers: {
@@ -419,34 +429,40 @@ IMPORTANTE: Estás hablando AHORA MISMO con ${currentUserName}. El nombre de su 
         if (response.data && response.data.choices[0].message) {
             return response.data.choices[0].message.content;
         } else {
-            return "Parece que tuve un problema al procesar mi respuesta. ¿Podrías intentarlo de nuevo?";
+            return "Hmm, me quedé pensando... ¿podrías repetírmelo?";
         }
 
     } catch (error) {
-        console.error("Error llamando a la API de DeepSeek:", error.response ? error.response.data : error.message);
-        return "Lo siento, estoy teniendo dificultades para conectarme en este momento. 😔";
+        console.error("Error IA:", error.response ? error.response.data : error.message);
+        return "Lo siento, mi conexión con el universo está fallando un poco. Intenta de nuevo en unos segundos. 🌟";
     }
 }
 
-// --- LÓGICA DE CHAT EN TIEMPO REAL (Socket.IO) ---
-// (Esta parte tampoco se toca)
-io.on('connection', (socket) => {
-    console.log('🔌 Un usuario se ha conectado:', socket.id);
+// ---------------------------------------------
+// 12. SERVIDOR REALTIME (SOCKET.IO)
+// ---------------------------------------------
 
-    // 1. Unir al usuario a una "sala" basada en su ID de pareja
-    socket.on('joinRoom', (coupleId) => {
+// Almacenamiento en memoria para estados (se reinicia si el server cae)
+// Estructura: { coupleId: { userId1: {mood...}, userId2: {mood...} } }
+const userStatuses = {}; 
+
+io.on('connection', (socket) => {
+    console.log('🔌 Nuevo cliente conectado:', socket.id);
+
+    // UNIRSE A LA SALA DE LA PAREJA
+    socket.on('join room', (coupleId) => {
         if (coupleId) {
             socket.join(coupleId);
-            console.log(`Usuario ${socket.id} se unió a la sala ${coupleId}`);
+            console.log(`Socket ${socket.id} unido a sala ${coupleId}`);
         }
     });
 
-    // 2. Escuchar un nuevo mensaje del chat
-    socket.on('chatMessage', async (data) => {
-        const { msg, coupleId, senderId } = data;
+    // --- MANEJO DE MENSAJES DE CHAT (Lógica Privada) ---
+    socket.on('chat message', async (data) => {
+        const { text: msg, coupleId, userId: senderId } = data;
 
         try {
-            // 1. Guardar el mensaje del usuario en la BD
+            // 1. Guardar mensaje del usuario en BD
             const userMessage = new Message({
                 senderId: senderId,
                 coupleId: coupleId,
@@ -455,109 +471,121 @@ io.on('connection', (socket) => {
             });
             await userMessage.save();
 
-            // 2. Enviar el mensaje del usuario de vuelta a su propia pantalla
-            socket.emit('message', userMessage);
+            // 2. EMITIR SOLO AL REMITENTE (Feedback inmediato)
+            // NO usamos io.to(coupleId) para no mostrar el texto a la pareja.
+            socket.emit('chat message', {
+                text: userMessage.text,
+                userId: userMessage.senderId.toString(),
+                isFromAI: false,
+                createdAt: userMessage.createdAt
+            });
 
-            // 3. Preparar y ejecutar la lógica de la IA
-            // Obtenemos el ID de la pareja
+            // 3. OBTENER CONTEXTO PARA LA IA
             const couple = await Couple.findById(coupleId);
             const partnerId = couple.userIds.find(id => id.toString() !== senderId);
 
-            // +++ AÑADIR ESTE BLOQUE PARA OBTENER NOMBRES +++
             const currentUser = await User.findById(senderId).select('name');
             const partnerUser = await User.findById(partnerId).select('name');
             
-            // Nombres que usaremos para la IA
-            const currentUserName = currentUser ? currentUser.name : 'Usuario Actual';
-            const partnerName = partnerUser ? partnerUser.name : 'Mi Pareja';
-            // +++ FIN DEL BLOQUE +++
+            const currentUserName = currentUser ? currentUser.name : 'Tu';
+            const partnerName = partnerUser ? partnerUser.name : 'Tu Pareja';
 
-            // Verificamos si la pareja ya ha hablado
-            const partnerMessages = await Message.find({
+            // 4. CONSTRUIR HISTORIAL COMPLETO (Usuario + Pareja)
+            // La IA necesita leer ambos lados para mediar.
+            const history = await Message.find({ coupleId: coupleId }).sort({ createdAt: -1 }).limit(20);
+            
+            const formattedHistory = history.map(m => {
+                if (m.isFromAI) return { role: 'assistant', content: m.text };
+                
+                // Etiquetamos claramente quién habla para la IA
+                const speakerName = (m.senderId.toString() === senderId) ? currentUserName : partnerName;
+                return {
+                    role: 'user',
+                    content: `[${speakerName} dice]: ${m.text}`
+                };
+            });
+
+            // Prompt específico para este turno
+            const mediationPrompt = [
+                ...formattedHistory.reverse(),
+                {
+                    role: "user",
+                    content: `Soy ${currentUserName}. Acabo de decir: "${msg}". Respóndeme a mí.`
+                }
+            ];
+
+            // 5. LLAMADA A LA IA
+            const aiResponseText = await callDeepSeek(mediationPrompt, currentUserName, partnerName);
+            
+            // 6. GUARDAR RESPUESTA IA
+            const aiMediationMessage = new Message({
+                senderId: senderId, // Se guarda "a nombre" del usuario actual para que aparezca en SU chat
                 coupleId: coupleId,
-                senderId: partnerId,
-                isFromAI: false
-            }).limit(1);
+                text: aiResponseText,
+                isFromAI: true
+            });
+            await aiMediationMessage.save();
 
-            let aiResponseText;
-
-            if (partnerMessages.length === 0) {
-                // 4a. Si la pareja NO ha hablado, enviar mensaje de espera
-                aiResponseText = `Entendido, gracias por compartir cómo te sientes. 💖 Aún no he hablado con tu pareja. Cuando me cuente su versión, podré ayudarles a ambos a entender mejor la situación. Mientras tanto, ¿quieres que te ayude a calmarte o a entender por qué te sientes así? 😊`;
-                
-                const aiWaitingMessage = new Message({
-                    senderId: senderId, // Se guarda "para" el senderId
-                    coupleId: coupleId,
-                    text: aiResponseText,
-                    isFromAI: true
-                });
-                await aiWaitingMessage.save();
-                
-                // Emitir solo al remitente
-                socket.emit('message', aiWaitingMessage);
-
-            // ...
-            } else {
-                // 4b. Si AMBOS han hablado, iniciar mediación
-                const history = await Message.find({ coupleId: coupleId }).sort({ createdAt: -1 }).limit(10);
-                
-                // --- ARREGLO DEL HISTORIAL ---
-                const formattedHistory = history.map(m => {
-                    // Si es un mensaje de la IA, solo pasamos el contenido
-                    if (m.isFromAI) {
-                        return { role: 'assistant', content: m.text };
-                    }
-                    
-                    // Si es de un usuario, usamos sus NOMBRES
-                    const speakerName = (m.senderId.toString() === senderId) ? currentUserName : partnerName;
-                    return {
-                        role: 'user',
-                        content: `[${speakerName} dijo]: ${m.text}`
-                    };
-                });
-                // --- FIN ARREGLO ---
-
-
-                // Creamos un prompt específico para el usuario que acaba de escribir
-                const mediationPrompt = [
-                    ...formattedHistory.reverse(), // Ponemos los mensajes más antiguos primero
-                    {
-                        role: "user",
-                        // Usamos los nombres en el prompt final también
-                        content: `Ese fue nuestro historial. Yo soy ${currentUserName}. Acabo de decir: "${msg}". Analiza todo (lo que dije yo y lo que dijo ${partnerName}) y dame tu respuesta como mediadora, hablándome solo a mí.`
-                    }
-                ];
-
-                // --- PASAMOS LOS NOMBRES A LA IA ---
-                aiResponseText = await callDeepSeek(mediationPrompt, currentUserName, partnerName);
-                
-                const aiMediationMessage = new Message({
-// ...
-                    senderId: senderId, // Se guarda "para" el senderId
-                    coupleId: coupleId,
-                    text: aiResponseText,
-                    isFromAI: true
-                });
-                await aiMediationMessage.save();
-
-                // Emitir la respuesta de mediación a AMBOS (para que la vean)
-socket.emit('message', aiMediationMessage);            }
+            // 7. ENVIAR RESPUESTA IA SOLO AL USUARIO
+            socket.emit('chat message', {
+                text: aiMediationMessage.text,
+                userId: 'AI',
+                isFromAI: true,
+                createdAt: aiMediationMessage.createdAt
+            });
 
         } catch (err) {
-            console.error("Error en evento 'chatMessage':", err);
-            socket.emit('error', 'Error al procesar tu mensaje.');
+            console.error("Error procesando mensaje:", err);
         }
     });
 
+    // --- EVENTO: TE EXTRAÑO (Sí se comparte) ---
+    socket.on('miss you', (data) => {
+        // Envia señal a la otra persona en la sala
+        socket.to(data.coupleId).emit('partner missed you');
+        console.log(`❤️ Latido enviado en sala ${data.coupleId}`);
+    });
+
+    // --- EVENTO: ACTUALIZAR ESTADO (Sí se comparte) ---
+    socket.on('status update', (data) => {
+        const { coupleId, userId, mood, energy, happiness, share } = data;
+        
+        // Guardar en memoria
+        if (!userStatuses[coupleId]) userStatuses[coupleId] = {};
+        userStatuses[coupleId][userId] = { mood, energy, happiness, share };
+
+        // Avisar a la pareja en tiempo real
+        socket.to(coupleId).emit('partner status update', { mood, energy, happiness, share });
+    });
+
+    // --- EVENTO: RECUPERAR ESTADO AL CONECTAR ---
+    socket.on('get status', (coupleId) => {
+        if (userStatuses[coupleId]) {
+            const states = userStatuses[coupleId];
+            // Enviamos los estados disponibles
+            for (const uid in states) {
+                socket.emit('partner status update', states[uid]);
+            }
+        }
+    });
+
+    // Desconexión
     socket.on('disconnect', () => {
-        console.log('🔌 Usuario desconectado:', socket.id);
+        console.log('🔌 Cliente desconectado');
     });
 });
 
-
-// --- INICIAR EL SERVIDOR ---
-// Usamos server.listen en lugar de app.listen para que Socket.IO funcione
+// ---------------------------------------------
+// 13. INICIO DEL SERVIDOR
+// ---------------------------------------------
 server.listen(PORT, () => {
-    // Asegurarse de que BASE_URL esté definida en Render para que esto se vea bien
-    console.log(`🚀 YumiFeel corriendo en ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
+    console.log(`
+    🚀 SERVIDOR YUMIFEEL INICIADO 🚀
+    --------------------------------
+    Puerto: ${PORT}
+    URL Base: ${process.env.BASE_URL || 'http://localhost:' + PORT}
+    MongoDB: Conectado
+    Modo: ${process.env.NODE_ENV || 'Development'}
+    --------------------------------
+    `);
 });

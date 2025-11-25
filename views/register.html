@@ -3,49 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crear Cuenta - YumiFeel</title>
+    <title>Registro - YumiFeel</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="theme-color" content="#fbf3ec">
 </head>
-<body>
+<body style="justify-content: center; align-items: center; padding: 20px;">
 
-    <div class="auth-container">
+    <div class="glass-panel" style="width: 100%; max-width: 380px; padding: 40px 30px; text-align: center; animation: msgPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);">
         
-        <div class="auth-header">
-            <h1>YumiFeel 💖</h1>
-            <p>Crea tu cuenta para empezar.</p>
-        </div>
+        <h2 style="color: var(--text-main); margin-bottom: 5px; font-weight: 900;">Únete a YumiFeel</h2>
+        <p style="color: var(--secondary); margin-bottom: 25px; font-size: 0.9rem;">Comienza tu viaje emocional</p>
 
-        <div class="form-container">
+        <% if (locals.error) { %>
+            <div style="background: rgba(174, 116, 116, 0.1); color: var(--danger); padding: 10px; border-radius: 15px; margin-bottom: 20px; font-size: 0.9rem;">
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form action="/register" method="POST">
             
-            <% if (locals.error) { %>
-                <div class="alert alert-danger"><%= error %></div>
-            <% } %>
-            
-            <form action="/register" method="POST">
-                <div class="form-group">
-                    <label for="name">Tu Nombre (o apodo)</label>
-                    <input type="text" id="name" name="name" class="form-control" required>
-                </div>
+            <div style="position: relative; margin-bottom: 15px;">
+                <i class="fas fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary); opacity: 0.6;"></i>
+                <input type="text" name="name" placeholder="¿Cómo te llamas?" required 
+                       style="width: 100%; padding: 16px 16px 16px 45px; border-radius: 20px; border: 1px solid white; background: rgba(255,255,255,0.6); outline: none; color: var(--text-main); font-size: 1rem;">
+            </div>
 
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Contraseña</label>
-                    <input type="password" id="password" name="password" class="form-control" required minlength="6">
-                </div>
-               
-                <div class="form-group" style="margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary btn-block">Crear Cuenta</button>
-                </div>
-            </form>
+            <div style="position: relative; margin-bottom: 15px;">
+                <i class="fas fa-envelope" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary); opacity: 0.6;"></i>
+                <input type="email" name="email" placeholder="Correo electrónico" required 
+                       style="width: 100%; padding: 16px 16px 16px 45px; border-radius: 20px; border: 1px solid white; background: rgba(255,255,255,0.6); outline: none; color: var(--text-main); font-size: 1rem;">
+            </div>
 
-            <p class="form-text">
-                ¿Ya tienes una cuenta? <a href="/login">Inicia sesión</a>
-            </p>
+            <div style="position: relative; margin-bottom: 25px;">
+                <i class="fas fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary); opacity: 0.6;"></i>
+                <input type="password" name="password" placeholder="Crea una contraseña" required 
+                       style="width: 100%; padding: 16px 16px 16px 45px; border-radius: 20px; border: 1px solid white; background: rgba(255,255,255,0.6); outline: none; color: var(--text-main); font-size: 1rem;">
+            </div>
+
+            <button type="submit" style="width: 100%; padding: 16px; border-radius: 50px; background: linear-gradient(135deg, var(--primary), var(--highlight)); color: white; font-weight: 800; border: none; cursor: pointer; font-size: 1.1rem; box-shadow: 0 10px 25px rgba(206, 153, 148, 0.4); transition: transform 0.2s;">
+                Registrarme 💖
+            </button>
+
+        </form>
+
+        <div style="margin-top: 25px;">
+            <a href="/login" style="color: var(--secondary); font-size: 0.9rem; text-decoration: none;">
+                ¿Ya tienes cuenta? <span style="font-weight: 800; color: var(--text-main);">Entrar</span>
+            </a>
         </div>
 
     </div>

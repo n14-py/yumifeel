@@ -3,106 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YumiFeel - Conecta con tu pareja</title>
+    <title>YumiFeel</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2a9d8f">
+    <meta name="theme-color" content="#fbf3ec">
 </head>
 <body>
 
-    <div class="app-container">
-
-        <%- include('partials/header.html') %>
-
-        <main class="app-content" id="app-content">
-
-            <% if (view === 'link-partner') { %>
-            
-                <div class="form-container" style="padding: 0; background: none; border: none;">
-                    <div class="auth-header" style="margin-bottom: 1rem;">
-                        <h2>Vincular Cuenta</h2>
-                        <p>Conéctate con tu pareja para empezar a chatear con Yumi.</p>
-                    </div>
-
-                    <% if (locals.error) { %>
-                        <div class="alert alert-danger"><%= error %></div>
-                    <% } %>
-                    <% if (locals.success) { %>
-                        <div class="alert alert-success"><%= success %></div>
-                    <% } %>
-
-                    <form action="/link-partner" method="POST">
-                        <div class="form-group">
-                            <label for="partnerCode">Ingresa el código de tu pareja:</label>
-                            <input type="text" id="partnerCode" name="partnerCode" class="form-control" placeholder="ABC123" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-block">Vincular</button>
-                    </form>
-
-                    <hr style="border-color: var(--border-color); margin: 2rem 0;">
-
-                    <div style="text-align: center;">
-                        <label>O comparte tu código:</label>
-                        <input type="text" class="form-control" value="<%= invitationCode %>" readonly style="font-size: 1.5rem; font-weight: bold; text-align: center; letter-spacing: 2px; margin-top: 0.5rem; background-color: var(--background-color);">
-                        <small style="color: var(--text-muted-color);">Pídele a tu pareja que ingrese este código.</small>
-                    </div>
-                </div>
-
-            <% } else if (view === 'chat') { %>
-
-                <div class="chat-messages" id="chat-messages">
-                    <div class="message ai">
-                        <div class="message-content">
-                            ¡Hola <%= currentUser.name %>! 👋 Soy Yumi. Estoy aquí para escucharte. Cuéntame cómo te sientes o qué te gustaría hablar sobre tu relación con <%= partner.name %>.
-                        </div>
-                    </div>
-                    
-                    <% messages.forEach(msg => { %>
-                        <div class="message <%= msg.isFromAI ? 'ai' : 'user' %>">
-                            <div class="message-content">
-                                <%= msg.text %>
-                                <div class="message-time"><%= new Date(msg.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) %></div>
-                            </div>
-                        </div>
-                    <% }); %>
-                </div>
-
-            <% } %>
-        
-        </main>
-
-        <% if (view === 'chat') { %>
-            <footer class="chat-input-area">
-                <form class="chat-form" id="chat-form">
-                    <input type_="text" id="msg-input" placeholder="Escribe cómo te sientes..." autocomplete="off" class="form-control">
-                    <button type="submit" id="send-btn" title="Enviar">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
-            </footer>
-        <% } %>
-
+    <div id="splash-screen">
+        <div class="bunny-bounce" style="font-size: 80px; text-align: center;">🐰</div>
+        <h3 style="margin-top: 15px; color: var(--secondary); font-weight: 800; opacity: 0.8; letter-spacing: 1px;">YUMIFEEL</h3>
     </div>
 
+    <%- include('partials/header.html') %>
+
+    <% if (view === 'chat') { %>
+
+        <div class="yumi-float-container">
+            <div id="yumi-avatar-btn" title="Ver estado de tu pareja">
+                <img src="/img/bunny_icon.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712009.png'" alt="Yumi">
+                <div id="status-badge" class="yumi-badge"></div>
+            </div>
+            <span style="font-size: 0.7rem; font-weight: 800; color: var(--secondary); margin-top: 5px; background: rgba(255,255,255,0.8); padding: 2px 8px; border-radius: 10px;">YUMI</span>
+        </div>
+
+        <div id="status-modal" class="status-overlay">
+            <div class="status-card glass-panel">
+                <button class="close-modal-btn" id="close-status-btn">&times;</button>
+                
+                <h3 style="color: var(--primary); margin-bottom: 20px;">
+                    Estado de <%= partner.name %>
+                </h3>
+
+                <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed rgba(0,0,0,0.05); padding-bottom: 10px;">
+                    <div style="text-align: left;">
+                        <span style="font-size: 2rem;">🌤️</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.8rem; color: var(--secondary); font-weight: 700; text-transform: uppercase;">Ánimo</div>
+                        <div id="partner-mood" style="font-size: 1.1rem; font-weight: 800; color: var(--text-main);">...</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed rgba(0,0,0,0.05); padding-bottom: 10px;">
+                    <div style="text-align: left;">
+                        <span style="font-size: 2rem;">🔋</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.8rem; color: var(--secondary); font-weight: 700; text-transform: uppercase;">Energía</div>
+                        <div id="partner-energy" style="font-size: 1.1rem; font-weight: 800; color: var(--text-main);">...</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="text-align: left;">
+                        <span style="font-size: 2rem;">💖</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.8rem; color: var(--secondary); font-weight: 700; text-transform: uppercase;">Amor</div>
+                        <div id="partner-happiness" style="font-size: 1.1rem; font-weight: 800; color: var(--text-main);">...</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; font-size: 0.8rem; color: var(--secondary); font-style: italic;">
+                    Actualizado hace un momento
+                </div>
+            </div>
+        </div>
+
+        <main class="main-container" id="chat-container">
+            <div class="chat-wrapper" id="chat-wrapper">
+                
+                <div class="msg-bubble bot">
+                    Hola <%= currentUser.name %> ✨<br>
+                    Soy Yumi. Este espacio es seguro para ti. ¿Cómo te sientes?
+                    <span class="msg-time">Ahora</span>
+                </div>
+
+                <% messages.forEach(msg => { %>
+                    <div class="msg-bubble <%= msg.isFromAI ? 'bot' : 'user' %>">
+                        <%= msg.text %>
+                        <span class="msg-time"><%= new Date(msg.createdAt).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) %></span>
+                    </div>
+                <% }); %>
+                
+            </div>
+        </main>
+
+        <button id="miss-you-btn" title="Enviar latido">
+            <i class="fas fa-heart"></i>
+        </button>
+
+        <form class="chat-input-area" id="input-area">
+            <input type="text" id="message-input" placeholder="Escribe aquí..." autocomplete="off">
+            <button type="submit" id="send-btn" class="send-btn-round">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+
+    <% } else { %>
+
+        <main style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <div class="glass-panel" style="padding: 40px 30px; text-align: center; width: 100%; max-width: 400px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">🔗</div>
+                <h2 style="margin-bottom: 10px; color: var(--text-main);">Conectar Pareja</h2>
+                <p style="color: var(--secondary); margin-bottom: 30px;">Ingresa el código mágico de tu persona especial.</p>
+
+                <% if (locals.error) { %>
+                    <div style="background: var(--danger); color: white; padding: 10px; border-radius: 15px; margin-bottom: 20px; font-size: 0.9rem;">
+                        <%= error %>
+                    </div>
+                <% } %>
+
+                <form action="/link-partner" method="POST">
+                    <input type="text" name="partnerCode" placeholder="CÓDIGO AQUÍ" required 
+                           style="width: 100%; padding: 18px; border-radius: 20px; border: 2px solid rgba(0,0,0,0.05); background: rgba(255,255,255,0.5); text-align: center; font-size: 1.2rem; outline: none; margin-bottom: 20px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;">
+                    
+                    <button type="submit" style="width: 100%; padding: 18px; border-radius: 50px; background: var(--text-main); color: white; font-weight: 800; border: none; cursor: pointer; font-size: 1rem; box-shadow: 0 10px 20px rgba(81, 52, 43, 0.2);">
+                        VINCULAR AHORA
+                    </button>
+                </form>
+
+                <div style="margin-top: 40px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 20px;">
+                    <p style="font-size: 0.8rem; color: var(--secondary); text-transform: uppercase; font-weight: 700;">Tu código es</p>
+                    <h1 style="font-size: 2.5rem; color: var(--primary); letter-spacing: 5px; margin-top: 5px;"><%= invitationCode %></h1>
+                </div>
+            </div>
+        </main>
+
+    <% } %>
+
     <script src="/socket.io/socket.io.js"></script>
-    
     <script>
         const currentUserID = "<%= currentUser._id %>";
         const currentCoupleID = "<%= currentUser.coupleId %>";
+        // Check de seguridad para evitar error null
+        const partnerName = "<%= (typeof partner !== 'undefined' && partner) ? partner.name : '' %>";
     </script>
-    
     <script src="/js/app.js"></script>
-
+    
     <script>
-        // Registrar el Service Worker para PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('Service Worker Registrado'))
-                .catch(err => console.error('Error al registrar Service Worker:', err));
+        window.addEventListener('load', () => {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                setTimeout(() => {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.style.display = 'none', 600);
+                }, 1500);
+            }
+        });
+
+        // Lógica Modal Yumi (Simple JS inline para velocidad)
+        const yumiBtn = document.getElementById('yumi-avatar-btn');
+        const modal = document.getElementById('status-modal');
+        const closeBtn = document.getElementById('close-status-btn');
+        const badge = document.getElementById('status-badge');
+
+        if(yumiBtn && modal) {
+            yumiBtn.addEventListener('click', () => {
+                modal.classList.add('open');
+                // Al abrir, quitamos el badge de notificación
+                if(badge) badge.classList.remove('active');
+            });
+        }
+        if(closeBtn && modal) {
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('open');
+            });
+        }
+        // Cerrar si tocas fuera
+        if(modal) {
+            modal.addEventListener('click', (e) => {
+                if(e.target === modal) modal.classList.remove('open');
+            });
         }
     </script>
-
-
 </body>
 </html>

@@ -1,29 +1,24 @@
-<header class="app-header">
-
-    <% if (path === '/') { %>
-        <div class="header-user-info">
-            <span>¡Hola, <%= currentUser.name %>!</span>
-        </div>
-        <a href="/settings" class="header-icon" title="Ajustes">
-            <i class="fas fa-cog"></i>
-        </a>
-
-    <% } else if (path === '/settings') { %>
-        <a href="/" class="header-icon" title="Volver al chat">
+<header>
+    <% if (path === '/settings') { %>
+        <a href="/" class="header-btn-icon" title="Volver al Chat">
             <i class="fas fa-arrow-left"></i>
         </a>
-        <h1 class="header-title">Ajustes</h1>
-        <a href="/logout" class="header-icon" title="Cerrar Sesión">
-            <i class="fas fa-sign-out-alt"></i>
-        </a>
+        
+        <div class="header-title-logo" style="font-size: 1.2rem;">Mi Estado</div>
+        
+        <div style="width: 40px;"></div>
 
     <% } else { %>
-        <a href="/" class="header-title-logo">
+        
+        <div class="header-title-logo">
             YumiFeel 💖
-        </a>
-         <a href="/logout" class="header-icon" title="Cerrar Sesión">
-            <i class="fas fa-sign-out-alt"></i>
-        </a>
-    <% } %>
+        </div>
 
+        <% if (currentUser) { %>
+            <a href="/settings" class="header-btn-icon" title="Ajustes y Estado">
+                <i class="fas fa-user-circle"></i>
+            </a>
+        <% } %>
+
+    <% } %>
 </header>
